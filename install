@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#-----------
+# Configurations
+#-----------
+
+MYSQL_VERSION=${MYSQL_VERSION-5.0.96}
+
+#-----------
+# Install Script
+#-----------
+
+mkdir -p /var/apps/mysql
+
+cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
+
+sed -i s/@MYSQL_VERSION@/$MYSQL_VERSION/g /var/apps/mysql/Dockerfile
+
+output=${MYSQL_VERSION-text}
+
+(cd /var/apps/mysql && docker build -t mysql .)
+echo "docker run -i -t mysql /bin/bash" > /var/apps/mysql/debug
+chmod 755 /var/apps/mysql/debug
