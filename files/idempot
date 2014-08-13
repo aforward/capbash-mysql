@@ -1,0 +1,9 @@
+#!/bin/bash
+
+RUNNING=`docker ps | grep mysql:latest`
+if [[ "$RUNNING" == "" ]]; then
+  echo "Starting MYSQL container..."
+  /var/apps/mysql/start
+else
+  echo "MYSQL container already running"
+fi

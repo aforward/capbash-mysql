@@ -4,20 +4,42 @@
 # Configurations
 #-----------
 
-MYSQL_VERSION=${MYSQL_VERSION-5.0.96}
+MYSQL_DATA_DIR=${MYSQL_DATA_DIR-/var/apps/mysql/data}
+MYSQL_PORT=${MYSQL_PORT-3306}
+MYSQL_ROOT_USERNAME=${MYSQL_ROOT_USERNAME-admin}
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD-WNRfMarrXa74bT}
 
 #-----------
 # Install Script
 #-----------
 
-mkdir -p /var/apps/mysql
+apt-get install -y mysql-client
+
+mkdir -p /var/apps/mysql /var/apps/mysql/helper
+mkdir -p $MYSQL_DATA_DIR
 
 cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
+cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
 
-sed -i s/@MYSQL_VERSION@/$MYSQL_VERSION/g /var/apps/mysql/Dockerfile
+chmod 755 /var/apps/mysql/helper/setup_database
+
+sed -i "s|@MYSQL_ROOT_USERNAME@|$MYSQL_ROOT_USERNAME|g" /var/apps/mysql/helper/setup_database
+sed -i "s|@MYSQL_ROOT_PASSWORD@|$MYSQL_ROOT_PASSWORD|g" /var/apps/mysql/helper/setup_database
+
+sed -i "s|@MYSQL_ROOT_USERNAME@|$MYSQL_ROOT_USERNAME|g" /var/apps/mysql/Dockerfile
+sed -i "s|@MYSQL_ROOT_PASSWORD@|$MYSQL_ROOT_PASSWORD|g" /var/apps/mysql/Dockerfile
 
 output=${MYSQL_VERSION-text}
 
 (cd /var/apps/mysql && docker build -t mysql .)
-echo "docker run -i -t mysql /bin/bash" > /var/apps/mysql/debug
+echo "docker run -i -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data -t mysql /bin/bash" > /var/apps/mysql/debug
+echo "docker run -d -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql" > /var/apps/mysql/start
+echo "docker stop \$(docker ps | grep mysql | awk '{print \$1}')" > /var/apps/mysql/stop
+printf "#!/bin/bash\nCONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')\nIP=\$(docker inspect \$CONTAINER_ID | python -c 'import json,sys;obj=json.load(sys.stdin);print obj[0][\"NetworkSettings\"][\"IPAddress\"]')\nmysql -u admin -p -h \$IP\n" > /var/apps/mysql/connect
+cp ./submodules/mysql/files/idempot /var/apps/mysql/idempot
+
 chmod 755 /var/apps/mysql/debug
+chmod 755 /var/apps/mysql/idempot
+chmod 755 /var/apps/mysql/start
+chmod 755 /var/apps/mysql/stop
+chmod 755 /var/apps/mysql/connect
