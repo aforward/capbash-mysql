@@ -1,0 +1,10 @@
+#!/bin/bash
+
+RUNNING=`docker ps | grep mysql`
+if [[ "$RUNNING" == "" ]]; then
+  echo "Starting MYSQL container..."
+  /var/apps/mysql/init
+  /var/apps/mysql/start
+else
+  echo "MYSQL container already running"
+fi
