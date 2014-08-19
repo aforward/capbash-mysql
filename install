@@ -6,8 +6,8 @@
 
 MYSQL_DATA_DIR=${MYSQL_DATA_DIR-/var/apps/mysql/data}
 MYSQL_PORT=${MYSQL_PORT-3306}
-MYSQL_ROOT_USERNAME=${MYSQL_ROOT_USERNAME-admin}
-MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD-WNRfMarrXa74bT}
+MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
+MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-WNRfMarrXa74bT}
 
 #-----------
 # Install Script
@@ -19,19 +19,50 @@ mkdir -p /var/apps/mysql /var/apps/mysql/helper
 mkdir -p $MYSQL_DATA_DIR
 
 cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
-
-if [[ ! -e /var/apps/mysql/helper/setup_database ]]; then
-  cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
-fi
+cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
 
 (cd /var/apps/mysql && docker build -t mysql .)
-echo "docker run -i -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql /bin/bash" > /var/apps/mysql/debug
-printf "#!/bin/bash\ndocker rm mysql > /dev/num\ndocker run -d -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data --name mysql mysql" > /var/apps/mysql/start
-echo "docker stop \$(docker ps | grep mysql | awk '{print \$1}')" > /var/apps/mysql/stop
-echo "docker run -e MYSQL_ROOT_USERNAME=$MYSQL_ROOT_USERNAME -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data -t mysql /opt/setup_database" > /var/apps/mysql/init
+printf "%b" "#!/bin/bash
+docker run -i -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql /bin/bash
+" > /var/apps/mysql/debug
 
-printf "#!/bin/bash\nCONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')\nIP=\$(docker inspect \$CONTAINER_ID | python -c 'import json,sys;obj=json.load(sys.stdin);print obj[0][\"NetworkSettings\"][\"IPAddress\"]')\nmysql -u admin -p -h \$IP\n" > /var/apps/mysql/connect
-cp ./submodules/mysql/files/idempot /var/apps/mysql/idempot
+printf "%b" "#!/bin/bash
+docker rm mysql > /dev/num
+docker run -d -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data --name mysql mysql
+" > /var/apps/mysql/start
+
+printf "%b" "#!/bin/bash
+docker stop \$(docker ps | grep mysql | awk '{print \$1}')
+" > /var/apps/mysql/stop
+
+printf "%b" "#!/bin/bash
+docker run \\
+  -e MYSQL_ADMIN_USERNAME=$MYSQL_ADMIN_USERNAME \\
+  -e MYSQL_ADMIN_PASSWORD=$MYSQL_ADMIN_PASSWORD \\
+  -p $MYSQL_PORT:3306 \\
+  -v $MYSQL_DATA_DIR:/data \\
+  mysql /opt/setup_database
+" > /var/apps/mysql/init
+
+printf "%b" "#!/bin/bash
+CONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')
+if [[ \"\$CONTAINER_ID\" == '' ]]; then
+  echo 'MYSQL not running, cannot connect.'
+else
+  IP=\$(docker inspect \$CONTAINER_ID | python -c 'import json,sys;obj=json.load(sys.stdin);print obj[0][\"NetworkSettings\"][\"IPAddress\"]')
+  mysql -u admin -p -h \$IP
+fi
+" > /var/apps/mysql/connect
+
+printf "%b" "#!/bin/bash
+RUNNING=\`docker ps | grep mysql\`
+if [[ "\$RUNNING" == '' ]]; then
+  echo 'Starting MYSQL container...'
+  /var/apps/mysql/start
+else
+  echo "MYSQL container already running"
+fi
+" > /var/apps/mysql/idempot
 
 chmod 755 /var/apps/mysql/debug
 chmod 755 /var/apps/mysql/idempot
@@ -39,3 +70,5 @@ chmod 755 /var/apps/mysql/start
 chmod 755 /var/apps/mysql/stop
 chmod 755 /var/apps/mysql/connect
 chmod 755 /var/apps/mysql/init
+
+/var/apps/mysql/init

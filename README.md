@@ -25,7 +25,10 @@ capbash install mysql
 The available configurations include:
 
 ```
-MYSQL_VERSION=${MYSQL_VERSION-5.0.96}
+MYSQL_DATA_DIR=${MYSQL_DATA_DIR-/var/apps/mysql/data}
+MYSQL_PORT=${MYSQL_PORT-3306}
+MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
+MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-WNRfMarrXa74bT}
 ```
 
 # Deploy to Remote Server #
