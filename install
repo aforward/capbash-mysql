@@ -13,9 +13,11 @@ MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-WNRfMarrXa74bT}
 # Install Script
 #-----------
 
-apt-get install -y mysql-client
+if [[ "`which mysql`" == "" ]]; then
+  apt-get install -y mysql-client
+fi
 
-mkdir -p /var/apps/mysql /var/apps/mysql/helper
+mkdir -p /var/apps/mysql/helper
 mkdir -p $MYSQL_DATA_DIR
 
 cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
@@ -27,12 +29,37 @@ docker run -i -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql /bin/bash
 " > /var/apps/mysql/debug
 
 printf "%b" "#!/bin/bash
+echo \"Starting MYSQL ($MYSQL_PORT, $MYSQL_DATA_DIR)...\"
 docker rm mysql > /dev/num
 docker run -d -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data --name mysql mysql
+IP=\$(/var/apps/mysql/ip)
+
+if [[ \"\$IP\" == '' ]]; then
+  echo 'No IP address assigned when starting MYSQL, not sure what went wrong.'
+  exit 1
+fi
+
+echo \"DONE, Starting MYSQL $IP ($MYSQL_PORT, $MYSQL_DATA_DIR).\"
+
+if [[ \"\`cat /etc/hosts | grep mysql.local\`\" == '' ]]; then
+  echo \"Adding mysql.local (\$IP) to /etc/hosts\"
+  echo \"\$IP mysql.local\" >> /etc/hosts
+else
+  echo \"Updating mysql.local (\$IP) in /etc/hosts\"
+  sed -i \"s|.*mysql.local|\$IP mysql.local|g\" /etc/hosts
+fi
 " > /var/apps/mysql/start
 
 printf "%b" "#!/bin/bash
-docker stop \$(docker ps | grep mysql | awk '{print \$1}')
+CONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')
+if [[ \"\$CONTAINER_ID\" == '' ]]; then
+  echo 'MYSQL container already stopped, nothing to do.'
+else
+  echo 'Stopping MYSQL...'
+  docker stop \$CONTAINER_ID
+  sed -i \"s|.*mysql.local||g\" /etc/hosts
+  echo 'DONE Stopping MYSQL.'
+fi
 " > /var/apps/mysql/stop
 
 printf "%b" "#!/bin/bash
@@ -47,20 +74,30 @@ docker run \\
 printf "%b" "#!/bin/bash
 CONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')
 if [[ \"\$CONTAINER_ID\" == '' ]]; then
-  echo 'MYSQL not running, cannot connect.'
+  echo ''
 else
   IP=\$(docker inspect \$CONTAINER_ID | python -c 'import json,sys;obj=json.load(sys.stdin);print obj[0][\"NetworkSettings\"][\"IPAddress\"]')
-  mysql -u admin -p -h \$IP
+  echo \"\$IP\"
+fi
+" > /var/apps/mysql/ip
+
+
+printf "%b" "#!/bin/bash
+IP=\$(/var/apps/mysql/ip)
+if [[ \"\$IP\" == '' ]]; then
+  echo 'MYSQL not running (no IP available), cannot connect.'
+else
+  echo \"Connecting to mysql.local (\$IP) as $MYSQL_ADMIN_USERNAME\"
+  mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local
 fi
 " > /var/apps/mysql/connect
 
 printf "%b" "#!/bin/bash
 RUNNING=\`docker ps | grep mysql\`
-if [[ "\$RUNNING" == '' ]]; then
-  echo 'Starting MYSQL container...'
+if [[ \"\$RUNNING\" == '' ]]; then
   /var/apps/mysql/start
 else
-  echo "MYSQL container already running"
+  echo 'MYSQL container already running'
 fi
 " > /var/apps/mysql/idempot
 
@@ -68,6 +105,7 @@ chmod 755 /var/apps/mysql/debug
 chmod 755 /var/apps/mysql/idempot
 chmod 755 /var/apps/mysql/start
 chmod 755 /var/apps/mysql/stop
+chmod 755 /var/apps/mysql/ip
 chmod 755 /var/apps/mysql/connect
 chmod 755 /var/apps/mysql/init
 
