@@ -21,7 +21,11 @@ mkdir -p /var/apps/mysql/helper
 mkdir -p $MYSQL_DATA_DIR
 
 cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
-cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
+
+# Causing a rebuild in mysql, so only updating if it's new
+if [[ ! -e /var/apps/mysql/helper/setup_database ]]; then
+  cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
+fi
 
 (cd /var/apps/mysql && docker build -t mysql .)
 printf "%b" "#!/bin/bash
@@ -66,7 +70,7 @@ printf "%b" "#!/bin/bash
 docker run \\
   -e MYSQL_ADMIN_USERNAME=$MYSQL_ADMIN_USERNAME \\
   -e MYSQL_ADMIN_PASSWORD=$MYSQL_ADMIN_PASSWORD \\
-  -p $MYSQL_PORT:3306 \\
+  -p 9995:3306 \\
   -v $MYSQL_DATA_DIR:/data \\
   mysql /opt/setup_database
 " > /var/apps/mysql/init
@@ -93,6 +97,10 @@ fi
 " > /var/apps/mysql/connect
 
 printf "%b" "#!/bin/bash
+mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREATE DATABASE IF NOT EXISTS \$1\"
+" > /var/apps/mysql/newdb
+
+printf "%b" "#!/bin/bash
 RUNNING=\`docker ps | grep mysql\`
 if [[ \"\$RUNNING\" == '' ]]; then
   /var/apps/mysql/start
@@ -108,5 +116,6 @@ chmod 755 /var/apps/mysql/stop
 chmod 755 /var/apps/mysql/ip
 chmod 755 /var/apps/mysql/connect
 chmod 755 /var/apps/mysql/init
+chmod 755 /var/apps/mysql/newdb
 
 /var/apps/mysql/init
