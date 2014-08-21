@@ -2,8 +2,8 @@ FROM ubuntu:14.04
 
 RUN groupadd -r mysql && useradd -r -g mysql mysql
 
-RUN apt-get update
-RUN apt-get -y install \
+RUN apt-get -qq update
+RUN RUN DEBIAN_FRONTEND=noninteractive apt-get -qqy install \
     build-essential \
     bison \
     build-essential \
