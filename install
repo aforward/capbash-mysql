@@ -4,10 +4,11 @@
 # Configurations
 #-----------
 
-MYSQL_DATA_DIR=${MYSQL_DATA_DIR-/var/apps/mysql/data}
+MYSQL_LAUNCHER_DIR=${MYSQL_LAUNCHER_DIR-/var/local/mysql}
+MYSQL_DATA_DIR=${MYSQL_DATA_DIR-${MYSQL_LAUNCHER_DIR}/data}
 MYSQL_PORT=${MYSQL_PORT-3306}
 MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
-MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-WNRfMarrXa74bT}
+MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
 
 #-----------
 # Install Script
@@ -17,26 +18,26 @@ if [[ "`which mysql`" == "" ]]; then
   apt-get install -y mysql-client
 fi
 
-mkdir -p /var/apps/mysql/helper
+mkdir -p ${MYSQL_LAUNCHER_DIR}/helper
 mkdir -p $MYSQL_DATA_DIR
 
-cp ./submodules/mysql/files/mysql.dockerfile /var/apps/mysql/Dockerfile
+cp ./submodules/mysql/files/mysql.dockerfile ${MYSQL_LAUNCHER_DIR}/Dockerfile
 
 # Causing a rebuild in mysql, so only updating if it's new
-if [[ ! -e /var/apps/mysql/helper/setup_database ]]; then
-  cp ./submodules/mysql/files/setup_database /var/apps/mysql/helper/setup_database
+if [[ ! -e ${MYSQL_LAUNCHER_DIR}/helper/setup_database ]]; then
+  cp ./submodules/mysql/files/setup_database ${MYSQL_LAUNCHER_DIR}/helper/setup_database
 fi
 
-(cd /var/apps/mysql && docker build -t mysql .)
+(cd ${MYSQL_LAUNCHER_DIR} && docker build -t mysql .)
 printf "%b" "#!/bin/bash
 docker run -i -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql /bin/bash
-" > /var/apps/mysql/debug
+" > ${MYSQL_LAUNCHER_DIR}/debug
 
 printf "%b" "#!/bin/bash
 echo \"Starting MYSQL ($MYSQL_PORT, $MYSQL_DATA_DIR)...\"
 docker rm mysql > /dev/num
 docker run -d -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data --name mysql mysql
-IP=\$(/var/apps/mysql/ip)
+IP=\$(${MYSQL_LAUNCHER_DIR}/ip)
 
 if [[ \"\$IP\" == '' ]]; then
   echo 'No IP address assigned when starting MYSQL, not sure what went wrong.'
@@ -52,7 +53,7 @@ else
   echo \"Updating mysql.local (\$IP) in /etc/hosts\"
   sed -i \"s|.*mysql.local|\$IP mysql.local|g\" /etc/hosts
 fi
-" > /var/apps/mysql/start
+" > ${MYSQL_LAUNCHER_DIR}/start
 
 printf "%b" "#!/bin/bash
 CONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')
@@ -64,7 +65,7 @@ else
   sed -i \"s|.*mysql.local||g\" /etc/hosts
   echo 'DONE Stopping MYSQL.'
 fi
-" > /var/apps/mysql/stop
+" > ${MYSQL_LAUNCHER_DIR}/stop
 
 printf "%b" "#!/bin/bash
 docker run \\
@@ -73,30 +74,30 @@ docker run \\
   -p 9995:3306 \\
   -v $MYSQL_DATA_DIR:/data \\
   mysql /opt/setup_database
-" > /var/apps/mysql/init
+" > ${MYSQL_LAUNCHER_DIR}/init
 
 printf "%b" "#!/bin/bash
-IP=\$(/var/apps/mysql/ip)
+IP=\$(${MYSQL_LAUNCHER_DIR}/ip)
 if [[ \"\$IP\" == '' ]]; then
   echo 'MYSQL not running (no IP available), cannot connect.'
 else
   echo \"Connecting to mysql.local (\$IP) as $MYSQL_ADMIN_USERNAME\"
   mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local
 fi
-" > /var/apps/mysql/connect
+" > ${MYSQL_LAUNCHER_DIR}/connect
 
 printf "%b" "#!/bin/bash
 mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREATE DATABASE IF NOT EXISTS \$1\"
-" > /var/apps/mysql/newdb
+" > ${MYSQL_LAUNCHER_DIR}/newdb
 
-NAME=mysql DIR=/var/apps/mysql ./submodules/docker/idempot
-NAME=mysql DIR=/var/apps/mysql ./submodules/docker/ip
+NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/idempot
+NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/ip
 
-chmod 755 /var/apps/mysql/debug
-chmod 755 /var/apps/mysql/start
-chmod 755 /var/apps/mysql/stop
-chmod 755 /var/apps/mysql/connect
-chmod 755 /var/apps/mysql/init
-chmod 755 /var/apps/mysql/newdb
+chmod 755 $MYSQL_LAUNCHER_DIR/debug
+chmod 755 $MYSQL_LAUNCHER_DIR/start
+chmod 755 $MYSQL_LAUNCHER_DIR/stop
+chmod 755 $MYSQL_LAUNCHER_DIR/connect
+chmod 755 $MYSQL_LAUNCHER_DIR/init
+chmod 755 $MYSQL_LAUNCHER_DIR/newdb
 
-/var/apps/mysql/init
+$MYSQL_LAUNCHER_DIR/init

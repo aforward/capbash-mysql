@@ -25,10 +25,11 @@ capbash install mysql
 The available configurations include:
 
 ```
-MYSQL_DATA_DIR=${MYSQL_DATA_DIR-/var/apps/mysql/data}
+MYSQL_LAUNCHER_DIR=${MYSQL_LAUNCHER_DIR-/var/local/mysql}
+MYSQL_DATA_DIR=${MYSQL_DATA_DIR-${MYSQL_LAUNCHER_DIR}/data}
 MYSQL_PORT=${MYSQL_PORT-3306}
 MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
-MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-WNRfMarrXa74bT}
+MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
 ```
 
 # Deploy to Remote Server #
