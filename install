@@ -55,17 +55,6 @@ else
 fi
 " > ${MYSQL_LAUNCHER_DIR}/start
 
-printf "%b" "#!/bin/bash
-CONTAINER_ID=\$(docker ps | grep mysql | awk '{print \$1}')
-if [[ \"\$CONTAINER_ID\" == '' ]]; then
-  echo 'MYSQL container already stopped, nothing to do.'
-else
-  echo 'Stopping MYSQL...'
-  docker stop \$CONTAINER_ID
-  sed -i \"s|.*mysql.local||g\" /etc/hosts
-  echo 'DONE Stopping MYSQL.'
-fi
-" > ${MYSQL_LAUNCHER_DIR}/stop
 
 printf "%b" "#!/bin/bash
 docker run \\
@@ -92,10 +81,10 @@ mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREAT
 
 NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/idempot
 NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/ip
+NAME=mysql HOST=mysql.local DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/stop
 
 chmod 755 $MYSQL_LAUNCHER_DIR/debug
 chmod 755 $MYSQL_LAUNCHER_DIR/start
-chmod 755 $MYSQL_LAUNCHER_DIR/stop
 chmod 755 $MYSQL_LAUNCHER_DIR/connect
 chmod 755 $MYSQL_LAUNCHER_DIR/init
 chmod 755 $MYSQL_LAUNCHER_DIR/newdb
