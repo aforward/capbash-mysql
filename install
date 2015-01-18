@@ -21,11 +21,11 @@ fi
 mkdir -p ${MYSQL_LAUNCHER_DIR}/helper
 mkdir -p $MYSQL_DATA_DIR
 
-cp ./submodules/mysql/files/mysql.dockerfile ${MYSQL_LAUNCHER_DIR}/Dockerfile
+cp ./bits/mysql/files/mysql.dockerfile ${MYSQL_LAUNCHER_DIR}/Dockerfile
 
 # Causing a rebuild in mysql, so only updating if it's new
 if [[ ! -e ${MYSQL_LAUNCHER_DIR}/helper/setup_database ]]; then
-  cp ./submodules/mysql/files/setup_database ${MYSQL_LAUNCHER_DIR}/helper/setup_database
+  cp ./bits/mysql/files/setup_database ${MYSQL_LAUNCHER_DIR}/helper/setup_database
 fi
 
 (cd ${MYSQL_LAUNCHER_DIR} && docker build -t mysql .)
@@ -79,9 +79,9 @@ printf "%b" "#!/bin/bash
 mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREATE DATABASE IF NOT EXISTS \$1\"
 " > ${MYSQL_LAUNCHER_DIR}/newdb
 
-NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/idempot
-NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/ip
-NAME=mysql HOST=mysql.local DIR=$MYSQL_LAUNCHER_DIR ./submodules/docker/stop
+NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/idempot
+NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/ip
+NAME=mysql HOST=mysql.local DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/stop
 
 chmod 755 $MYSQL_LAUNCHER_DIR/debug
 chmod 755 $MYSQL_LAUNCHER_DIR/start

@@ -1,6 +1,6 @@
 #!/bin/bash
 mkdir -p ./nodes
-cp ./submodules/mysql/files/mysql_node ./nodes/mysql
+cp ./bits/mysql/files/mysql_node ./nodes/mysql
 chmod 755 ./nodes/mysql
 
 capbash install docker
