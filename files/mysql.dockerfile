@@ -16,9 +16,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -qqy install \
 RUN \
   sed -i 's|key_buffer|# key_buffer|g' /etc/mysql/my.cnf && \
   sed -i 's|myisam-recover|myisam-recover-options|g' /etc/mysql/my.cnf && \
-  sed -i -e"s/^bind-address\s*=\s*127.0.0.1/bind-address = 0.0.0.0/" /etc/mysql/my.cnf
+  sed -i -e"s/^bind-address\s*=\s*127.0.0.1/bind-address = 0.0.0.0/" /etc/mysql/my.cnf && \
+  mkdir -p /usr/local/dockerbin
 
-ADD helper/setup_database /opt/setup_database
+ENV PATH /usr/local/dockerbin:$PATH
+ADD bin /usr/local/dockerbin
 
 WORKDIR /data
 VOLUME /data

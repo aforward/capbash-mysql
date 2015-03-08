@@ -4,11 +4,15 @@
 # Configurations
 #-----------
 
-MYSQL_LAUNCHER_DIR=${MYSQL_LAUNCHER_DIR-/var/local/mysql}
-MYSQL_DATA_DIR=${MYSQL_DATA_DIR-${MYSQL_LAUNCHER_DIR}/data}
-MYSQL_PORT=${MYSQL_PORT-3306}
+export LAUNCHER_DIR=${LAUNCHER_DIR-/var/local}
+export MYSQL_LAUNCHER_DIR=${MYSQL_LAUNCHER_DIR-$LAUNCHER_DIR/mysql}
+export DATA_DIR=${DATA_DIR-/var/local/data}
+export MYSQL_DATA_DIR=${MYSQL_DATA_DIR-${DATA_DIR}/mysql}
+export MYSQL_PORT=${MYSQL_PORT-3306}
+LAUNCHER_OWNER=${LAUNCHER_OWNER-$USER}
 MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
 MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
+
 
 #-----------
 # Install Script
@@ -18,43 +22,11 @@ if [[ "`which mysql`" == "" ]]; then
   apt-get install -y mysql-client
 fi
 
-mkdir -p ${MYSQL_LAUNCHER_DIR}/helper
-mkdir -p $MYSQL_DATA_DIR
+OWNER=$LAUNCHER_OWNER ./bits/bootstrap/mkdir MYSQL_LAUNCHER_DIR MYSQL_DATA_DIR ${MYSQL_LAUNCHER_DIR}/bin
+TEMPLATE=./bits/mysql/files/mysql.dockerfile LOCATION=${MYSQL_LAUNCHER_DIR}/Dockerfile ./bits/docker/copyif
+TEMPLATE=./bits/mysql/files/bin LOCATION=${MYSQL_LAUNCHER_DIR}/bin ./bits/docker/copyallif
 
-cp ./bits/mysql/files/mysql.dockerfile ${MYSQL_LAUNCHER_DIR}/Dockerfile
-
-# Causing a rebuild in mysql, so only updating if it's new
-if [[ ! -e ${MYSQL_LAUNCHER_DIR}/helper/setup_database ]]; then
-  cp ./bits/mysql/files/setup_database ${MYSQL_LAUNCHER_DIR}/helper/setup_database
-fi
-
-(cd ${MYSQL_LAUNCHER_DIR} && docker build -t mysql .)
-printf "%b" "#!/bin/bash
-docker run -i -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data mysql /bin/bash
-" > ${MYSQL_LAUNCHER_DIR}/debug
-
-printf "%b" "#!/bin/bash
-echo \"Starting MYSQL ($MYSQL_PORT, $MYSQL_DATA_DIR)...\"
-docker rm mysql > /dev/num
-docker run -d -t -p $MYSQL_PORT:3306 -v $MYSQL_DATA_DIR:/data --name mysql mysql
-IP=\$(${MYSQL_LAUNCHER_DIR}/ip)
-
-if [[ \"\$IP\" == '' ]]; then
-  echo 'No IP address assigned when starting MYSQL, not sure what went wrong.'
-  exit 1
-fi
-
-echo \"DONE, Starting MYSQL $IP ($MYSQL_PORT, $MYSQL_DATA_DIR).\"
-
-if [[ \"\`cat /etc/hosts | grep mysql.local\`\" == '' ]]; then
-  echo \"Adding mysql.local (\$IP) to /etc/hosts\"
-  echo \"\$IP mysql.local\" >> /etc/hosts
-else
-  echo \"Updating mysql.local (\$IP) in /etc/hosts\"
-  sed -i \"s|.*mysql.local|\$IP mysql.local|g\" /etc/hosts
-fi
-" > ${MYSQL_LAUNCHER_DIR}/start
-
+OWNER=$LAUNCHER_OWNER LAUNCHER_DIR=$MYSQL_LAUNCHER_DIR NAME=mysql VERSION=latest ./bits/docker/load_or_build
 
 printf "%b" "#!/bin/bash
 docker run \\
@@ -62,7 +34,7 @@ docker run \\
   -e MYSQL_ADMIN_PASSWORD=$MYSQL_ADMIN_PASSWORD \\
   -p 9995:3306 \\
   -v $MYSQL_DATA_DIR:/data \\
-  mysql /opt/setup_database
+  mysql /usr/local/dockerbin/setup_mysql
 " > ${MYSQL_LAUNCHER_DIR}/init
 
 printf "%b" "#!/bin/bash
@@ -79,12 +51,11 @@ printf "%b" "#!/bin/bash
 mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREATE DATABASE IF NOT EXISTS \$1\"
 " > ${MYSQL_LAUNCHER_DIR}/newdb
 
-NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/idempot
-NAME=mysql DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/ip
-NAME=mysql HOST=mysql.local DIR=$MYSQL_LAUNCHER_DIR ./bits/docker/stop
+NAME=mysql DIR=$MYSQL_LAUNCHER_DIR \
+  START=./bits/mysql/files/_start \
+  DEBUG=./bits/mysql/files/_debug \
+  ./bits/docker/helpers
 
-chmod 755 $MYSQL_LAUNCHER_DIR/debug
-chmod 755 $MYSQL_LAUNCHER_DIR/start
 chmod 755 $MYSQL_LAUNCHER_DIR/connect
 chmod 755 $MYSQL_LAUNCHER_DIR/init
 chmod 755 $MYSQL_LAUNCHER_DIR/newdb
