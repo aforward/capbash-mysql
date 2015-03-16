@@ -1,0 +1,2 @@
+#!/bin/bash
+mysqld --datadir=/data --user=mysql

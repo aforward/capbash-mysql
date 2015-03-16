@@ -1,4 +1,5 @@
 #!/bin/bash
+[[ -z "$INFO_LEVEL" ]] && source ./bits/bootstrap/logging
 
 #-----------
 # Configurations
@@ -17,23 +18,26 @@ MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
 # Install Script
 #-----------
 
-if [[ "`which mysql`" == "" ]]; then
+notify "Install mysql..."
+
+if [[ "`which mysql 2> /dev/null`" == "" ]]; then
   apt-get install -y mysql-client
 fi
 
 OWNER=$LAUNCHER_OWNER ./bits/bootstrap/mkdir MYSQL_LAUNCHER_DIR MYSQL_DATA_DIR ${MYSQL_LAUNCHER_DIR}/bin
 TEMPLATE=./bits/mysql/files/mysql.dockerfile LOCATION=${MYSQL_LAUNCHER_DIR}/Dockerfile ./bits/docker/copyif
 TEMPLATE=./bits/mysql/files/bin LOCATION=${MYSQL_LAUNCHER_DIR}/bin ./bits/docker/copyallif
+TEMPLATE=./bits/bootstrap/logging LOCATION=${MYSQL_LAUNCHER_DIR}/bin/logging ./bits/docker/copyif
 
-OWNER=$LAUNCHER_OWNER LAUNCHER_DIR=$MYSQL_LAUNCHER_DIR NAME=mysql VERSION=latest ./bits/docker/load_or_build
+OWNER=$LAUNCHER_OWNER LAUNCHER_DIR=$MYSQL_LAUNCHER_DIR NAME=mysql VERSION=latest ./bits/docker/build
 
 printf "%b" "#!/bin/bash
 docker run \\
   -e MYSQL_ADMIN_USERNAME=$MYSQL_ADMIN_USERNAME \\
   -e MYSQL_ADMIN_PASSWORD=$MYSQL_ADMIN_PASSWORD \\
-  -p 9995:3306 \\
+  -p $MYSQL_PORT:3306 \\
   -v $MYSQL_DATA_DIR:/data \\
-  mysql /usr/local/dockerbin/setup_mysql
+  mysql setup_mysql
 " > ${MYSQL_LAUNCHER_DIR}/init
 
 printf "%b" "#!/bin/bash
@@ -47,7 +51,15 @@ fi
 " > ${MYSQL_LAUNCHER_DIR}/connect
 
 printf "%b" "#!/bin/bash
-mysql -u $MYSQL_ADMIN_USERNAME -p$MYSQL_ADMIN_PASSWORD -h mysql.local -e \"CREATE DATABASE IF NOT EXISTS \$1\"
+docker exec -it \\
+  -e MYSQL_ADMIN_USERNAME=$MYSQL_ADMIN_USERNAME \\
+  -e MYSQL_ADMIN_PASSWORD=$MYSQL_ADMIN_PASSWORD \\
+  -e DATABASE=$DATABASE \\
+  -e USERNAME=$USERNAME \\
+  -e PASSWORD=$PASSWORD \\
+  -p $MYSQL_PORT:3306 \\
+  -v $MYSQL_DATA_DIR:/data \\
+  mysql newdb
 " > ${MYSQL_LAUNCHER_DIR}/newdb
 
 NAME=mysql DIR=$MYSQL_LAUNCHER_DIR \
@@ -60,3 +72,5 @@ chmod 755 $MYSQL_LAUNCHER_DIR/connect
 chmod 755 $MYSQL_LAUNCHER_DIR/newdb
 
 $MYSQL_LAUNCHER_DIR/init
+
+notify "DONE, Install mysql."

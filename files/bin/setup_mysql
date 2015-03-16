@@ -1,7 +1,8 @@
 #!/bin/bash
+source logging
 
 if [[ ! -e "/data/mysql" ]]; then
-  echo "Initalizing MYSQL data"
+  debug "  -- Initalizing MYSQL data"
   mysql_install_db --user=mysql --datadir=/data
 
   TEMP_FILE='/tmp/mysql-first-time.sql'
@@ -19,6 +20,6 @@ if [[ ! -e "/data/mysql" ]]; then
   killall mysqld
   sleep 10s
 else
-  echo "MYSQL data already intialized"
+  debug "  -- MYSQL data already intialized"
 fi
 chown -R mysql:mysql /data

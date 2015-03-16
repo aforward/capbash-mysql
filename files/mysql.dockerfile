@@ -26,5 +26,3 @@ WORKDIR /data
 VOLUME /data
 
 EXPOSE 3306
-
-CMD mysqld --datadir=/data --user=mysql
