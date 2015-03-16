@@ -13,7 +13,6 @@ LAUNCHER_OWNER=${LAUNCHER_OWNER-$USER}
 MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
 MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
 
-
 #-----------
 # Install Script
 #-----------
@@ -56,8 +55,8 @@ NAME=mysql DIR=$MYSQL_LAUNCHER_DIR \
   DEBUG=./bits/mysql/files/_debug \
   ./bits/docker/helpers
 
-chmod 755 $MYSQL_LAUNCHER_DIR/connect
 chmod 755 $MYSQL_LAUNCHER_DIR/init
+chmod 755 $MYSQL_LAUNCHER_DIR/connect
 chmod 755 $MYSQL_LAUNCHER_DIR/newdb
 
 $MYSQL_LAUNCHER_DIR/init
