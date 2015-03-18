@@ -3,17 +3,17 @@ source logging
 
 if [[ ! -e "/data/mysql" ]]; then
   debug "  -- Initalizing MYSQL data"
-  mysql_install_db --user=mysql --datadir=/data
+  mysql_install_db --user=mysql --datadir=/data --log-error=/log/error.log
 
   TEMP_FILE='/tmp/mysql-first-time.sql'
-  echo "" > "$TEMP_FILE"
-  echo "DELETE FROM mysql.user ;" >> "$TEMP_FILE"
-  echo "CREATE USER '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}' ;" >> "$TEMP_FILE"
-  echo "GRANT ALL ON *.* TO '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}' WITH GRANT OPTION ;" >> "$TEMP_FILE"
-  echo "DROP DATABASE IF EXISTS test ;" >> "$TEMP_FILE"
-  echo 'FLUSH PRIVILEGES ;' >> "$TEMP_FILE"
+  printf "%b" "
+  DELETE FROM mysql.user;
+  GRANT ALL ON *.* TO '${MYSQL_ADMIN_USER}'@'%' IDENTIFIED BY '${MYSQL_ADMIN_PASSWORD}' WITH GRANT OPTION ;
+  DROP DATABASE IF EXISTS test;
+  FLUSH PRIVILEGES ;
+  " > $TEMP_FILE
 
-  /usr/bin/mysqld_safe --user=mysql --datadir=/data &
+  /usr/bin/mysqld_safe --user=mysql --datadir=/data --log-error=/log/error.log &
   sleep 10s
   cat "$TEMP_FILE" | mysql
 
@@ -23,3 +23,4 @@ else
   debug "  -- MYSQL data already intialized"
 fi
 chown -R mysql:mysql /data
+chown -R mysql:mysql /log

@@ -1,2 +1,2 @@
 #!/bin/bash
-mysqld --datadir=/data --user=mysql
+mysqld --datadir=/data --log-error=/log/error.log --user=mysql
