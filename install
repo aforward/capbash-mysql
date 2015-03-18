@@ -120,7 +120,7 @@ if [[ \"\$CONTAINER_ID\" == \"\" ]]; then
 
   if [[ \"\`cat /etc/hosts | grep mysql.local\`\" == '' ]]; then
     debug \"  -- Adding mysql.local (\$IP) to /etc/hosts\"
-    debug \"\$IP mysql.local\" >> /etc/hosts
+    echo \"\$IP mysql.local\" >> /etc/hosts
   else
     debug \"  -- Updating mysql.local (\$IP) in /etc/hosts\"
     sed -i \"s|.*mysql.local|\$IP mysql.local|g\" /etc/hosts
