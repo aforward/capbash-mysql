@@ -18,6 +18,7 @@ LAUNCHER_OWNER=${LAUNCHER_OWNER-$USER}
 MYSQL_ADMIN_USERNAME=${MYSQL_ADMIN_USERNAME-admin}
 MYSQL_ADMIN_PASSWORD=${MYSQL_ADMIN_PASSWORD-yth3fn0t}
 
+MYSQL_OUTPUT=/tmp/mysql.log
 MYSQL_INIT_OUTPUT=/tmp/mysql_init.log
 
 #-----------
@@ -27,7 +28,9 @@ MYSQL_INIT_OUTPUT=/tmp/mysql_init.log
 notify "Install mysql..."
 
 if [[ "`which mysql 2> /dev/null`" == "" ]]; then
-  apt-get install -y mysql-client
+  $SUDO apt-get install -y mysql-client > $MYSQL_OUTPUT 2>&1
+  ERROR="Unable to install mysql due to ..." ./bits/bootstrap/failonerrors $? $MYSQL_OUTPUT
+  [ $? -ne 0 ] && exit 1
 fi
 
 OWNER=$LAUNCHER_OWNER ./bits/bootstrap/mkdir MYSQL_LAUNCHER_DIR MYSQL_DATA_DIR MYSQL_LOG_DIR ${MYSQL_LAUNCHER_DIR}/bin
